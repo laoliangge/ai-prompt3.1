@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ROOT_ACCESS v28.0</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        /* 🎨 保持 v17 经典黑金风格 */
+        :root { --ai-accent: #B89648; --ai-bg-card: rgba(15, 15, 15, 0.98); }
+        body { 
+            height: 100dvh; width: 100vw; overflow-y: auto; 
+            background: #050505 radial-gradient(circle at 50% 0%, #1a1b2e 0%, transparent 70%);
+            display: flex; flex-direction: column; align-items: center; 
+            font-family: 'Inter', sans-serif; margin: 0;
+        }
+        .manage-container { 
+            width: 95%; max-width: 450px; margin-top: 140px; background: var(--ai-bg-card); 
+            border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 20px; 
+            box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+        }
+        .title { color: var(--ai-accent); font-weight: 700; font-size: 13px; margin-bottom: 20px; border-bottom: 1px dashed rgba(184,150,72,0.3); padding-bottom: 10px; letter-spacing: 1px; }
+        
+        .search-box { width: 100%; margin-bottom: 15px; display: none; }
+        .search-input { width: 100%; padding: 10px; background: #000; border: 1px solid rgba(184,150,72,0.4); color: #fff; border-radius: 6px; box-sizing: border-box; }
+        .search-input:focus { border-color: var(--ai-accent); outline: none; }
+
+        .data-item { padding: 15px 0; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between; align-items: center; }
+        .data-info { font-size: 14px; font-weight: 600; color: #ddd; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        /* 显示权重的金色小字 */
+        .sort-tag { color: var(--ai-accent); font-size: 10px; margin-right: 8px; opacity: 0.8; font-family: monospace; }
+        
+        .btn-group { display: flex; gap: 6px; }
+        .btn-view { background: transparent; border: 1px solid #3b82f6; color: #3b82f6; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px; }
+        .btn-edit { background: transparent; border: 1px solid #4ade80; color: #4ade80; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px; }
+        .btn-del { background: transparent; border: 1px solid #ff4444; color: #ff4444; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px; }
+
+        /* 全屏大图层 */
+        #imgOverlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.95); z-index: 2000;
+            display: none; justify-content: center; align-items: center;
+            cursor: pointer;
+        }
+        #imgOverlay img { max-width: 90%; max-height: 80%; border: 2px solid var(--ai-accent); border-radius: 8px; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
+        #imgOverlay .close-tip { position: absolute; bottom: 30px; color: #888; font-size: 12px; background: rgba(0,0,0,0.5); padding: 5px 10px; border-radius: 20px; }
+
+        .pw-input { width: 100%; padding: 12px; background: #000; border: 1px solid var(--ai-accent); color: var(--ai-accent); border-radius: 6px; margin-bottom: 15px; text-align: center; box-sizing: border-box; }
+        .btn-verify { width: 100%; padding: 13px; background: var(--ai-accent); color: #000; border: none; border-radius: 50px; font-weight: 800; cursor: pointer; text-transform: uppercase; letter-spacing: 1px; }
+
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: none; justify-content: center; align-items: center; z-index: 999; }
+        .modal-box { width: 90%; max-width: 400px; background: #111; border: 1px solid var(--ai-accent); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 10px; }
+        .edit-input, .edit-area { width: 100%; background: #000; border: 1px solid #333; color: #fff; padding: 10px; border-radius: 6px; box-sizing: border-box; }
+        .edit-area { height: 120px; resize: none; border-left: 2px solid var(--ai-accent); }
+    </style>
+</head>
+<body>
+
+    <div id="imgOverlay" onclick="closeImg()">
+        <img id="fullImg" src="" decoding="async">
+        <div class="close-tip">轻点屏幕关闭</div>
+    </div>
+
+    <div class="manage-container">
+        <div class="title">ROOT_ACCESS v28.0 (SORTING)</div>
+        
+        <div id="authBox">
+            <input type="text" id="passCode" class="pw-input" autocomplete="off">
+            <button class="btn-verify" onclick="verify()">Authorize</button>
+        </div>
+
+        <div id="searchContainer" class="search-box">
+            <input type="text" id="searchInput" class="search-input" placeholder="🔍 Search..." oninput="doSearch()">
+        </div>
+
+        <div id="controlPanel" style="display:none;">
+            <div id="listContent" style="text-align:center; color:#666;">Waiting...</div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="editModal">
+        <div class="modal-box">
+            <div style="color:var(--ai-accent); font-weight:700; text-align:center;">EDIT CONTENT</div>
+            
+            <label style="color:#666; font-size:11px; margin-bottom:-5px;">Sort Order (0=默认, 数字越大越靠前)</label>
+            <input type="number" id="editSort" class="edit-input" placeholder="0">
+            
+            <input type="text" id="editTitle" class="edit-input" placeholder="Title">
+            <input type="text" id="editCategory" class="edit-input" placeholder="Category">
+            <textarea id="editPrompt" class="edit-area" placeholder="Prompt"></textarea>
+            
+            <div style="display:flex; gap:10px;">
+                <button onclick="closeModal()" style="flex:1; background:#333; color:#fff; padding:10px; border:none; border-radius:6px;">CANCEL</button>
+                <button onclick="saveChanges()" style="flex:2; background:var(--ai-accent); color:#000; padding:10px; border:none; border-radius:6px; font-weight:700;">SAVE</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const LOCK_CODE = 'MDkvMTIyMw=='; 
+        let isAuthorized = false;
+        let allData = [];
+        let currentEditId = null;
+
+        const client = window.supabase.createClient('https://mcnilpwwzjtacotgzfcz.supabase.co', 'sb_publishable_LXmgVKowe5CIOr9v_PtODQ_dtC1fqkS');
+
+        async function verify() {
+            if (btoa(document.getElementById('passCode').value.trim()) === LOCK_CODE) {
+                isAuthorized = true;
+                document.getElementById('authBox').style.display = 'none';
+                document.getElementById('searchContainer').style.display = 'block';
+                document.getElementById('controlPanel').style.display = 'block';
+                loadData();
+            } else { alert("ACCESS DENIED"); }
+        }
+
+        async function loadData() {
+            document.getElementById('listContent').innerText = "Syncing...";
+            
+            // 🚀 核心升级：同时抓取 sort_order，并按它排序！
+            // 逻辑：先按 sort_order 倒序（大号在前），再按 id 倒序（新图在前）
+            const { data, error } = await client.from('prompts')
+                .select('id, title, category, sort_order')
+                .order('sort_order', { ascending: false })
+                .order('id', { ascending: false });
+
+            if(!error) { allData = data; renderList(allData); }
+        }
+
+        function renderList(items) {
+            document.getElementById('listContent').innerHTML = items.map(item => `
+                <div class="data-item">
+                    <span class="data-info">
+                        <span class="sort-tag">[W:${item.sort_order || 0}]</span>
+                        ${item.title}
+                    </span>
+                    <div class="btn-group">
+                        <button class="btn-view" onclick="showImg(${item.id}, this)">查看</button>
+                        <button class="btn-edit" onclick="openEdit(${item.id})">修改</button>
+                        <button class="btn-del" onclick="doDelete(${item.id})">销毁</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function showImg(id, btn) {
+            btn.innerText = "⏳";
+            const { data, error } = await client.from('prompts').select('imageUrl').eq('id', id).single();
+            if (!error && data && data.imageUrl) {
+                const img = document.getElementById('fullImg');
+                img.src = data.imageUrl; 
+                document.getElementById('imgOverlay').style.display = 'flex';
+                btn.innerText = "查看";
+            } else {
+                alert("无图片");
+                btn.innerText = "无图";
+            }
+        }
+
+        function closeImg() {
+            document.getElementById('imgOverlay').style.display = 'none';
+            document.getElementById('fullImg').src = ""; 
+        }
+
+        // 修改：加载时把权重也填进去
+        async function openEdit(id) {
+            currentEditId = id;
+            const item = allData.find(i => i.id === id);
+            
+            document.getElementById('editSort').value = item.sort_order || 0; // 👈 填入当前权重
+            document.getElementById('editTitle').value = item.title;
+            document.getElementById('editCategory').value = item.category;
+            document.getElementById('editPrompt').value = "Loading..."; 
+            
+            document.getElementById('editModal').style.display = 'flex';
+
+            const { data, error } = await client.from('prompts').select('prompt').eq('id', id).single();
+            if (!error && data) {
+                document.getElementById('editPrompt').value = data.prompt;
+            }
+        }
+
+        function doSearch() {
+            const q = document.getElementById('searchInput').value.toLowerCase().trim();
+            renderList(allData.filter(i => (i.title+i.category).toLowerCase().includes(q)));
+        }
+
+        // 保存：同时更新权重
+        async function saveChanges() {
+            const { error } = await client.from('prompts').update({
+                sort_order: document.getElementById('editSort').value, // 👈 保存权重
+                title: document.getElementById('editTitle').value,
+                category: document.getElementById('editCategory').value,
+                prompt: document.getElementById('editPrompt').value
+            }).eq('id', currentEditId);
+            if(!error) { closeModal(); loadData(); }
+        }
+
+        function closeModal() { document.getElementById('editModal').style.display = 'none'; }
+        
+        async function doDelete(id) {
+            if (!confirm("CONFIRM DELETE?")) return;
+            const { error } = await client.from('prompts').delete().eq('id', id);
+            if(!error) loadData();
+        }
+    </script>
+</body>
+</html>
+
+

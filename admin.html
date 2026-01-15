@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AI 发布终端</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Inter:wght@400;600&family=Playfair+Display:wght@700&family=Noto+Sans+SC:wght@400;700&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <style>
+        :root {
+            --ai-accent: #B89648; /* 哑光金 */
+            --ai-glow: rgba(184, 150, 72, 0.2);
+            --ai-bg-card: rgba(15, 15, 15, 0.98);
+        }
+
+        /* 🚀 方案：锁定视口，禁止滚动 */
+        body { 
+            height: 100dvh; width: 100vw; overflow: hidden; position: fixed;
+            background: #050505 radial-gradient(circle at 50% 0%, #1a1b2e 0%, transparent 70%);
+            display: flex; flex-direction: column;
+            font-family: 'Inter', "Noto Sans SC", sans-serif;
+        }
+
+        /* ✨ 核心调优：细腻暗网格背景 (若隐若现版) */
+        body::after {
+            content: ""; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-image: 
+                /* ⚡ 透明度调低至 0.03，极度隐秘 */
+                linear-gradient(rgba(184, 150, 72, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(184, 150, 72, 0.03) 1px, transparent 1px);
+            /* ⚡ 网格缩小至 20px，更细腻 */
+            background-size: 20px 20px; 
+            z-index: -1; pointer-events: none;
+        }
+
+        .admin-wrapper { 
+            flex: 1; display: flex; justify-content: center;
+            /* ⚡ 盒子精准下沉 140px */
+            padding: 140px 15px 10px; 
+        }
+        
+        .form-terminal { 
+            width: 100%; max-width: 450px; background: var(--ai-bg-card); 
+            backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px);
+            border: 1px solid rgba(255, 255, 255, 0.1); 
+            padding: 15px 18px; border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+            height: fit-content;
+        }
+
+        .input-group { display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px; }
+        
+        /* 🏷️ 标签：锁定 13px，CSS金点 */
+        label { 
+            color: #777; font-size: 13px; font-weight: 500; 
+            text-transform: uppercase; letter-spacing: 0.5px;
+            display: flex; align-items: center; gap: 6px;
+        }
+        label::before { content: ""; width: 4px; height: 4px; background: var(--ai-accent); border-radius: 50%; }
+
+        /* 输入框：锁定 13px */
+        input, textarea, .file-box { 
+            width: 100%; background: rgba(0, 0, 0, 0.7) !important; 
+            border: 1px solid rgba(255, 255, 255, 0.12); color: #fff; 
+            padding: 11px 14px; border-radius: 6px; font-size: 13px;
+        }
+        
+        input::placeholder { font-size: 13px; color: #555; }
+        input:focus, textarea:focus { outline: none; border-color: var(--ai-accent) !important; }
+        
+        /* 📜 提示词框：无白点 */
+        textarea { 
+            height: 100px; font-family: 'Fira Code', monospace !important; 
+            color: var(--ai-accent); line-height: 1.4; border-left: 2px solid var(--ai-accent);
+            resize: none; 
+            overflow-y: auto;
+        }
+        textarea::-webkit-resizer { display: none; }
+
+        .file-box { display: flex; align-items: center; justify-content: space-between; cursor: pointer; color: #888; }
+        .file-btn { background: rgba(184, 150, 72, 0.1); color: var(--ai-accent); padding: 3px 10px; border-radius: 4px; font-size: 11px; border: 1px solid var(--ai-glow); }
+        
+        /* 🚀 核心按钮：一行显示 */
+        .btn-ai { 
+            width: 90%; margin: 8px auto 0; display: block; padding: 13px 5px; 
+            background: transparent; border: 1px solid var(--ai-accent); border-radius: 50px;
+            color: var(--ai-accent); font-weight: 700; font-size: 13px; letter-spacing: 0.5px;
+            cursor: pointer; text-transform: uppercase; transition: all 0.3s;
+            white-space: nowrap; 
+            overflow: hidden; text-overflow: ellipsis;
+        }
+        .btn-ai:active { background: var(--ai-accent); color: #000; transform: scale(0.96); }
+
+        #statusMsg { 
+            text-align: center; font-size: 11px; margin-top: 10px; 
+            font-family: 'Fira Code', monospace; min-height: 16px;
+        }
+
+    </style>
+</head>
+<body>
+
+    <nav class="navbar">
+        <div class="nav-content">
+            <div class="logo"><span class="logo-text" style="color:#fff; font-family:'Playfair Display'; font-weight:700;">AI PROMPT</span></div>
+            <div class="nav-links">
+                <a href="index.html">方案</a>
+                <a href="admin.html" class="active">发布</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="admin-wrapper">
+        <div class="form-terminal">
+            <div class="input-group">
+                <label>IDENTIFIER / 标题</label>
+                <input type="text" id="title" placeholder="例如：机械姬">
+            </div>
+
+            <div class="input-group">
+                <label>CATEGORY / 分类</label>
+                <input type="text" id="category" placeholder="例如：科幻 / 3D">
+            </div>
+            
+            <div class="input-group">
+                <label>VISUAL ASSET / 图片资源</label>
+                <input type="file" id="fileIn" hidden accept="image/*">
+                <div class="file-box" id="dropZone" onclick="document.getElementById('fileIn').click()">
+                    <span id="fileName">点击选择图片...</span>
+                    <span class="file-btn">BROWSE</span>
+                </div>
+            </div>
+
+            <div class="input-group">
+                <label>NEURAL PROMPT / 提示词内核</label>
+                <textarea id="prompt" placeholder="在此粘贴 Prompt..."></textarea>
+            </div>
+
+            <button class="btn-ai" id="genBtn" onclick="gen()">Execute_Release / 立即发布</button>
+            <div id="statusMsg"></div>
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://mcnilpwwzjtacotgzfcz.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_LXmgVKowe5CIOr9v_PtODQ_dtC1fqkS';
+
+        let selectedFile = null;
+        
+        document.getElementById('fileIn').onchange = function(e) {
+            if(e.target.files[0]) {
+                selectedFile = e.target.files[0];
+                const rawName = selectedFile.name;
+                const displayName = rawName.length > 20 ? rawName.substring(0, 20) + "..." : rawName;
+                document.getElementById('fileName').innerText = displayName;
+                document.getElementById('statusMsg').innerText = ""; 
+            }
+        };
+
+        async function gen() {
+            const btn = document.getElementById('genBtn');
+            const msg = document.getElementById('statusMsg');
+            const title = document.getElementById('title').value.trim();
+            const category = document.getElementById('category').value.trim();
+            const prompt = document.getElementById('prompt').value.trim();
+
+            if(!title || !category || !selectedFile || !prompt) {
+                msg.innerText = "❌ ERROR: 请把内容填写完整！";
+                msg.style.color = "#ff4444";
+                return;
+            }
+
+            msg.innerText = "⚡ PROCESSING / 正在发布中...";
+            msg.style.color = "#B89648";
+            btn.innerText = "EXECUTING...";
+            btn.disabled = true;
+            
+            try {
+                const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+                const safeName = `${Date.now()}_${selectedFile.name.replace(/\s/g, '')}`;
+                const { data: imgData, error: imgErr } = await supabase.storage.from('images').upload(safeName, selectedFile);
+                if(imgErr) throw imgErr;
+
+                const { data: { publicUrl } } = supabase.storage.from('images').getPublicUrl(safeName);
+
+                const { error: dbErr } = await supabase.from('prompts').insert([{
+                    title: title, category: category, imageUrl: publicUrl, prompt: prompt
+                }]);
+                if(dbErr) throw dbErr;
+
+                msg.innerText = "✅ SUCCESS / 发布成功！正在重置系统...";
+                msg.style.color = "#4ade80";
+                setTimeout(() => location.reload(), 2000);
+
+            } catch (err) {
+                msg.innerText = "❌ FAILURE: " + err.message;
+                msg.style.color = "#ff4444";
+                btn.innerText = "RETRY";
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>
