@@ -46,14 +46,16 @@ document.addEventListener('DOMContentLoaded', () => {
               setupInteraction();  
               setupNavbarScroll(); 
 
-              // 🔥 核心新增 1/2：读取记忆 (针对你的 App 架构)
-              // 你的网页是 wrapper 在滚动，不是 window，所以要读 wrapper 的 scrollTop
+              // 🔥 核心修改 1/2：读取记忆并“阅后即焚”
               const savedPos = sessionStorage.getItem('gallery_scroll_pos');
               const scroller = document.getElementById('gallery-wrapper');
               if (savedPos && scroller) {
                   // 给一点点时间让图片占位，然后跳过去
                   setTimeout(() => {
                       scroller.scrollTop = parseFloat(savedPos);
+                      // 【关键】跳过去之后立刻删掉记忆！
+                      // 这样下次如果是刷新进来，这里就是空的，自然会回顶部
+                      sessionStorage.removeItem('gallery_scroll_pos'); 
                   }, 100);
               }
           });
@@ -455,13 +457,21 @@ window.addEventListener('pageshow', function(e) {
 });
 
 // ==========================================
-// 11. 滚动记忆系统 (针对 App 架构优化版)
+// 11. 滚动记忆系统 (修正版)
 // ==========================================
-// 🔥 核心新增 2/2：离开时保存位置
-window.addEventListener('beforeunload', () => {
-    const scroller = document.getElementById('gallery-wrapper');
-    // 如果能找到滚动容器，就保存它的位置
-    if (scroller) {
-        sessionStorage.setItem('gallery_scroll_pos', scroller.scrollTop);
+// 🔥 核心修改 2/2：逻辑大改
+// 只有当用户点击了“链接”或“按钮”（比如去发布页）时，才保存位置
+// 如果只是普通刷新页面，这个事件不会触发，所以位置不会被保存 -> 刷新后归零
+document.addEventListener('click', (e) => {
+    // 只有点击 a 标签（链接）时才记录
+    const link = e.target.closest('a');
+    
+    // 确保不是页内跳转（比如 #search），而是真要去别的页面
+    if (link) {
+        const scroller = document.getElementById('gallery-wrapper');
+        // 如果能找到滚动容器，就保存它的位置
+        if (scroller) {
+            sessionStorage.setItem('gallery_scroll_pos', scroller.scrollTop);
+        }
     }
 });
