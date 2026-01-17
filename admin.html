@@ -64,7 +64,9 @@
             box-sizing: border-box;
         }
         
-        input::placeholder { font-size: 13px; color: #555; }
+        /* 👇 修改1：统一 Prompt 框的提示语颜色 */
+        input::placeholder, textarea::placeholder { font-size: 13px; color: #555; }
+
         input:focus, textarea:focus { outline: none; border-color: var(--ai-accent) !important; }
         
         textarea { 
@@ -73,7 +75,9 @@
             resize: none; overflow-y: auto;
         }
 
-        .file-box { display: flex; align-items: center; justify-content: space-between; cursor: pointer; color: #888; }
+        /* 👇 修改2：统一上传按钮里的文字颜色 (#555) */
+        .file-box { display: flex; align-items: center; justify-content: space-between; cursor: pointer; color: #555; }
+
         .file-btn { background: rgba(184, 150, 72, 0.1); color: var(--ai-accent); padding: 3px 10px; border-radius: 4px; font-size: 11px; border: 1px solid var(--ai-glow); white-space: nowrap; margin-left: 10px; }
         
         .btn-ai { 
@@ -85,6 +89,14 @@
         .btn-ai:active { background: var(--ai-accent); color: #000; transform: scale(0.96); }
 
         #statusMsg { text-align: center; font-size: 11px; margin-top: 10px; font-family: 'Fira Code', monospace; min-height: 16px; }
+
+        /* SVG 图标背景样式 */
+        #manualUrl {
+            padding-left: 34px !important;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23B89648' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71'/%3E%3Cpath d='M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71'/%3E%3C/svg%3E") !important;
+            background-repeat: no-repeat !important;
+            background-position: 10px center !important;
+        }
     </style>
 </head>
 <body>
@@ -114,8 +126,7 @@
             <div class="input-group">
                 <label>VISUAL ASSET / 图片资源</label>
                 
-                <input type="text" id="manualUrl" placeholder="粘贴专线外链 (若填此项则不用本地上传)..." style="margin-bottom:8px; border-color:var(--ai-accent); padding-left: 34px; background-image: url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23B89648' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71'/%3E%3Cpath d='M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71'/%3E%3C/svg%3E&quot;) !important; background-repeat: no-repeat !important; background-position: 10px center !important;">
-
+                <input type="text" id="manualUrl" placeholder="粘贴专线外链 (若填此项则不用本地上传)...">
                 
                 <input type="file" id="fileIn" hidden accept="image/*">
                 <div class="file-box" id="dropZone" onclick="document.getElementById('fileIn').click()">
@@ -152,7 +163,6 @@
                 const originalFile = e.target.files[0];
                 const fileNameDisplay = document.getElementById('fileName');
 
-                // 1. GIF 保护
                 if(originalFile.type === 'image/gif') {
                     selectedFile = originalFile;
                     fileNameDisplay.innerText = "🎞️ " + truncateName(originalFile.name);
@@ -162,17 +172,13 @@
                 fileNameDisplay.innerText = "⚡ Analyzing...";
 
                 try {
-                    // 2. 尝试压缩
                     const compressedFile = await compressImage(originalFile);
-
-                    // 3. 智能对比 (后台默默执行，不再显示绿字)
                     if (compressedFile.size >= originalFile.size) {
                         selectedFile = originalFile;
-                        fileNameDisplay.innerText = truncateName(originalFile.name);
                     } else {
                         selectedFile = compressedFile;
-                        fileNameDisplay.innerText = truncateName(selectedFile.name);
                     }
+                    fileNameDisplay.innerText = truncateName(selectedFile.name);
                 } catch (err) {
                     selectedFile = originalFile;
                     fileNameDisplay.innerText = truncateName(originalFile.name);
@@ -181,7 +187,6 @@
             }
         };
 
-        // 压缩核心函数 (0.82 High Quality)
         function compressImage(file) {
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
@@ -194,19 +199,16 @@
                         const maxWidth = 2500;
                         let width = img.width;
                         let height = img.height;
-                        
                         if (width > maxWidth) {
                             height *= maxWidth / width;
                             width = maxWidth;
                         }
                         canvas.width = width;
                         canvas.height = height;
-                        
                         const ctx = canvas.getContext('2d');
                         ctx.imageSmoothingEnabled = true;
                         ctx.imageSmoothingQuality = 'high';
                         ctx.drawImage(img, 0, 0, width, height);
-                        
                         canvas.toBlob((blob) => {
                             if (!blob) return reject(new Error('Canvas empty'));
                             const newName = file.name.replace(/\.[^/.]+$/, "") + ".webp";
@@ -267,4 +269,3 @@
     </script>
 </body>
 </html>
-
