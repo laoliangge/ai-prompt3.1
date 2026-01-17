@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ROOT_ACCESS v28.1 (PRO)</title>
-    <link rel="stylesheet" href="style.css">
+    <title>ROOT_ACCESS v28.2 (SECURE AUTH)</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
+        /* 🎨 保持 v17/v28 经典黑金风格 */
         :root { --ai-accent: #B89648; --ai-bg-card: rgba(15, 15, 15, 0.98); }
         body { 
             height: 100dvh; width: 100vw; overflow-y: auto; 
@@ -21,33 +21,30 @@
         }
         .title { color: var(--ai-accent); font-weight: 700; font-size: 13px; margin-bottom: 20px; border-bottom: 1px dashed rgba(184,150,72,0.3); padding-bottom: 10px; letter-spacing: 1px; }
         
+        /* 登录框样式更新 */
+        .auth-box { display: flex; flex-direction: column; gap: 10px; }
+        .pw-input { width: 100%; padding: 12px; background: #000; border: 1px solid #333; color: #fff; border-radius: 6px; box-sizing: border-box; text-align: center; }
+        .pw-input:focus { border-color: var(--ai-accent); outline: none; }
+        .btn-verify { width: 100%; padding: 13px; background: var(--ai-accent); color: #000; border: none; border-radius: 50px; font-weight: 800; cursor: pointer; text-transform: uppercase; letter-spacing: 1px; }
+
         .search-box { width: 100%; margin-bottom: 15px; display: none; }
         .search-input { width: 100%; padding: 10px; background: #000; border: 1px solid rgba(184,150,72,0.4); color: #fff; border-radius: 6px; box-sizing: border-box; }
-        .search-input:focus { border-color: var(--ai-accent); outline: none; }
-
+        
         .data-item { padding: 15px 0; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between; align-items: center; }
         .data-info { font-size: 14px; font-weight: 600; color: #ddd; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .sort-tag { color: var(--ai-accent); font-size: 10px; margin-right: 8px; opacity: 0.8; font-family: monospace; }
         
         .btn-group { display: flex; gap: 6px; }
-        .btn-view { background: transparent; border: 1px solid #3b82f6; color: #3b82f6; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px; }
-        .btn-edit { background: transparent; border: 1px solid #4ade80; color: #4ade80; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px; }
-        .btn-del { background: transparent; border: 1px solid #ff4444; color: #ff4444; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px; }
+        button { border: 1px solid transparent; background: transparent; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px; }
+        .btn-view { border-color: #3b82f6; color: #3b82f6; }
+        .btn-edit { border-color: #4ade80; color: #4ade80; }
+        .btn-del { border-color: #ff4444; color: #ff4444; }
 
-        #imgOverlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.95); z-index: 2000;
-            display: none; justify-content: center; align-items: center; cursor: pointer;
-        }
-        #imgOverlay img { max-width: 90%; max-height: 80%; border: 2px solid var(--ai-accent); border-radius: 8px; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
-        #imgOverlay .close-tip { position: absolute; bottom: 30px; color: #888; font-size: 12px; background: rgba(0,0,0,0.5); padding: 5px 10px; border-radius: 20px; }
-
-        .pw-input { width: 100%; padding: 12px; background: #000; border: 1px solid var(--ai-accent); color: var(--ai-accent); border-radius: 6px; margin-bottom: 15px; text-align: center; box-sizing: border-box; }
-        .btn-verify { width: 100%; padding: 13px; background: var(--ai-accent); color: #000; border: none; border-radius: 50px; font-weight: 800; cursor: pointer; text-transform: uppercase; letter-spacing: 1px; }
-
+        #imgOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 2000; display: none; justify-content: center; align-items: center; }
+        #imgOverlay img { max-width: 90%; max-height: 80%; border: 2px solid var(--ai-accent); border-radius: 8px; }
+        
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: none; justify-content: center; align-items: center; z-index: 999; }
         .modal-box { width: 90%; max-width: 400px; background: #111; border: 1px solid var(--ai-accent); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 10px; }
-        
         .edit-label { color: #666; font-size: 11px; margin-bottom: -5px; margin-top: 5px; }
         .edit-input, .edit-area { width: 100%; background: #000; border: 1px solid #333; color: #fff; padding: 10px; border-radius: 6px; box-sizing: border-box; }
         .edit-area { height: 100px; resize: none; border-left: 2px solid var(--ai-accent); }
@@ -55,17 +52,16 @@
 </head>
 <body>
 
-    <div id="imgOverlay" onclick="closeImg()">
-        <img id="fullImg" src="" decoding="async">
-        <div class="close-tip">轻点屏幕关闭</div>
-    </div>
+    <div id="imgOverlay" onclick="closeImg()"><img id="fullImg" decoding="async"></div>
 
     <div class="manage-container">
-        <div class="title">ROOT_ACCESS v28.1 (LINK MASTER)</div>
+        <div class="title">ROOT_ACCESS v28.2 (SECURE AUTH)</div>
         
-        <div id="authBox">
-            <input type="text" id="passCode" class="pw-input" autocomplete="off">
-            <button class="btn-verify" onclick="verify()">Authorize</button>
+        <div id="authBox" class="auth-box">
+            <input type="email" id="adminEmail" class="pw-input" placeholder="Admin Email" autocomplete="username">
+            <input type="password" id="adminPass" class="pw-input" placeholder="Password" autocomplete="current-password">
+            <button class="btn-verify" onclick="verify()">Login to Database</button>
+            <div id="loginStatus" style="color:#ff4444; font-size:12px; text-align:center;"></div>
         </div>
 
         <div id="searchContainer" class="search-box">
@@ -80,66 +76,71 @@
     <div class="modal-overlay" id="editModal">
         <div class="modal-box">
             <div style="color:var(--ai-accent); font-weight:700; text-align:center;">EDIT CONTENT</div>
-            
-            <label class="edit-label">Sort Order (权重)</label>
-            <input type="number" id="editSort" class="edit-input" placeholder="0">
-            
-            <label class="edit-label">Title (标题)</label>
-            <input type="text" id="editTitle" class="edit-input" placeholder="Title">
-            
-            <label class="edit-label">Category (分类)</label>
-            <input type="text" id="editCategory" class="edit-input" placeholder="Category">
-
-            <label class="edit-label">Image URL (图片链接/专线)</label>
-            <input type="text" id="editImgUrl" class="edit-input" placeholder="https://..." style="border-color: #555;">
-            
-            <label class="edit-label">Prompt (提示词)</label>
-            <textarea id="editPrompt" class="edit-area" placeholder="Prompt"></textarea>
-            
+            <label class="edit-label">Sort Order</label><input type="number" id="editSort" class="edit-input">
+            <label class="edit-label">Title</label><input type="text" id="editTitle" class="edit-input">
+            <label class="edit-label">Category</label><input type="text" id="editCategory" class="edit-input">
+            <label class="edit-label">Image URL</label><input type="text" id="editImgUrl" class="edit-input">
+            <label class="edit-label">Prompt</label><textarea id="editPrompt" class="edit-area"></textarea>
             <div style="display:flex; gap:10px; margin-top:10px;">
-                <button onclick="closeModal()" style="flex:1; background:#333; color:#fff; padding:10px; border:none; border-radius:6px;">CANCEL</button>
-                <button onclick="saveChanges()" style="flex:2; background:var(--ai-accent); color:#000; padding:10px; border:none; border-radius:6px; font-weight:700;">SAVE</button>
+                <button onclick="closeModal()" style="flex:1; background:#333; color:#fff; padding:10px;">CANCEL</button>
+                <button onclick="saveChanges()" style="flex:2; background:var(--ai-accent); color:#000; padding:10px; font-weight:700;">SAVE</button>
             </div>
         </div>
     </div>
 
     <script>
-        const LOCK_CODE = 'MDkvMTIyMw=='; 
-        let isAuthorized = false;
+        // 你的配置信息
+        const SUPABASE_URL = 'https://mcnilpwwzjtacotgzfcz.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_LXmgVKowe5CIOr9v_PtODQ_dtC1fqkS';
+        const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
         let allData = [];
         let currentEditId = null;
 
-        const client = window.supabase.createClient('https://mcnilpwwzjtacotgzfcz.supabase.co', 'sb_publishable_LXmgVKowe5CIOr9v_PtODQ_dtC1fqkS');
-
+        // 🛡️ 核心升级：不再是本地比对字符串，而是向服务器申请令牌
         async function verify() {
-            if (btoa(document.getElementById('passCode').value.trim()) === LOCK_CODE) {
-                isAuthorized = true;
+            const email = document.getElementById('adminEmail').value.trim();
+            const password = document.getElementById('adminPass').value.trim();
+            const statusDiv = document.getElementById('loginStatus');
+
+            statusDiv.innerText = "Verifying...";
+            
+            // 发起真正的登录请求
+            const { data, error } = await client.auth.signInWithPassword({ email, password });
+
+            if (error) {
+                statusDiv.innerText = "❌ 登录失败: " + error.message;
+                alert("ACCESS DENIED: 账号或密码错误");
+            } else {
+                // 登录成功！
+                statusDiv.innerText = "";
                 document.getElementById('authBox').style.display = 'none';
                 document.getElementById('searchContainer').style.display = 'block';
                 document.getElementById('controlPanel').style.display = 'block';
-                loadData();
-            } else { alert("ACCESS DENIED"); }
+                loadData(); // 开始拉取数据
+            }
         }
 
         async function loadData() {
-            document.getElementById('listContent').innerText = "Syncing...";
+            document.getElementById('listContent').innerText = "Syncing with Database...";
             const { data, error } = await client.from('prompts')
-                .select('id, title, category, sort_order, imageUrl, prompt') // 👈 多抓取一个 imageUrl
+                .select('*')
                 .order('sort_order', { ascending: false })
                 .order('id', { ascending: false });
 
-            if(!error) { allData = data; renderList(allData); }
+            if(error) {
+                document.getElementById('listContent').innerText = "❌ Error: " + error.message;
+            } else {
+                allData = data; renderList(allData);
+            }
         }
 
         function renderList(items) {
             document.getElementById('listContent').innerHTML = items.map(item => `
                 <div class="data-item">
-                    <span class="data-info">
-                        <span class="sort-tag">[W:${item.sort_order || 0}]</span>
-                        ${item.title}
-                    </span>
+                    <span class="data-info"><span class="sort-tag">[W:${item.sort_order||0}]</span>${item.title}</span>
                     <div class="btn-group">
-                        <button class="btn-view" onclick="showImg('${item.imageUrl}', this)">查看</button>
+                        <button class="btn-view" onclick="showImg('${item.imageUrl}')">查看</button>
                         <button class="btn-edit" onclick="openEdit(${item.id})">修改</button>
                         <button class="btn-del" onclick="doDelete(${item.id})">销毁</button>
                     </div>
@@ -147,56 +148,50 @@
             `).join('');
         }
 
-        function showImg(url, btn) {
-            if (url && url !== 'null' && url !== 'undefined') {
-                const img = document.getElementById('fullImg');
-                img.src = url; 
+        function showImg(url) {
+            if(url && url!=='null') {
+                document.getElementById('fullImg').src = url; 
                 document.getElementById('imgOverlay').style.display = 'flex';
-            } else {
-                alert("无图片链接");
-            }
+            } else alert("无图片链接");
         }
-
-        function closeImg() {
-            document.getElementById('imgOverlay').style.display = 'none';
-            document.getElementById('fullImg').src = ""; 
-        }
+        function closeImg() { document.getElementById('imgOverlay').style.display = 'none'; }
 
         function openEdit(id) {
             currentEditId = id;
             const item = allData.find(i => i.id === id);
-            
-            document.getElementById('editSort').value = item.sort_order || 0; 
-            document.getElementById('editTitle').value = item.title;
-            document.getElementById('editCategory').value = item.category;
-            document.getElementById('editImgUrl').value = item.imageUrl || ""; // 👈 填入现有链接
-            document.getElementById('editPrompt').value = item.prompt || "";
-            
+            ['Sort','Title','Category','ImgUrl','Prompt'].forEach(k => {
+                let val = item[k.toLowerCase()] || item[k.replace('Img','Image').replace('Sort','sort_order').toLowerCase()] || ""; 
+                // 简单映射处理
+                if(k==='Sort') val = item.sort_order;
+                if(k==='ImgUrl') val = item.imageUrl;
+                document.getElementById('edit'+k).value = val || "";
+            });
             document.getElementById('editModal').style.display = 'flex';
         }
 
-        function doSearch() {
-            const q = document.getElementById('searchInput').value.toLowerCase().trim();
-            renderList(allData.filter(i => (i.title+i.category).toLowerCase().includes(q)));
-        }
-
         async function saveChanges() {
-            const { error } = await client.from('prompts').update({
+            const updates = {
                 sort_order: document.getElementById('editSort').value,
                 title: document.getElementById('editTitle').value,
                 category: document.getElementById('editCategory').value,
-                imageUrl: document.getElementById('editImgUrl').value, // 👈 保存链接修改
+                imageUrl: document.getElementById('editImgUrl').value,
                 prompt: document.getElementById('editPrompt').value
-            }).eq('id', currentEditId);
-            if(!error) { closeModal(); loadData(); }
+            };
+            const { error } = await client.from('prompts').update(updates).eq('id', currentEditId);
+            if(!error) { closeModal(); loadData(); } else alert("Save Failed: " + error.message);
         }
 
         function closeModal() { document.getElementById('editModal').style.display = 'none'; }
         
         async function doDelete(id) {
-            if (!confirm("CONFIRM DELETE?")) return;
+            if (!confirm("⚠️ 确定要从数据库中销毁此记录吗？\n(B2文件需单独清理)")) return;
             const { error } = await client.from('prompts').delete().eq('id', id);
-            if(!error) loadData();
+            if(!error) loadData(); else alert("Delete Failed: " + error.message);
+        }
+
+        function doSearch() {
+            const q = document.getElementById('searchInput').value.toLowerCase();
+            renderList(allData.filter(i => (i.title+i.category).toLowerCase().includes(q)));
         }
     </script>
 </body>
