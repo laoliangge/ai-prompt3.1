@@ -115,7 +115,7 @@
             <div class="input-group">
                 <label>VISUAL ASSET / 图片资源</label>
                 
-                <input type="text" id="manualUrl" placeholder="🔗 粘贴专线外链 (若填此项则不上传Supabase)..." style="margin-bottom:8px; border-color:var(--ai-accent);">
+                <input type="text" id="manualUrl" placeholder="🔗 粘贴专线外链 (若填此项则不用在下方本地上传)..." style="margin-bottom:8px; border-color:var(--ai-accent);">
                 
                 <input type="file" id="fileIn" hidden accept="image/*">
                 <div class="file-box" id="dropZone" onclick="document.getElementById('fileIn').click()">
@@ -141,11 +141,11 @@
 
         let selectedFile = null;
         
-        // 🔧 新增：文件名截断助手 (前12 + ... + 后7)
+        // 🔧 新增：文件名截断助手 (前15 + ... + 后7)
         function truncateName(name) {
             if (!name) return "";
-            if (name.length <= 22) return name;
-            return name.substring(0, 12) + "..." + name.substring(name.length - 7);
+            if (name.length <= 25) return name;
+            return name.substring(0, 15) + "..." + name.substring(name.length - 7);
         }
 
         document.getElementById('fileIn').onchange = async function(e) {
@@ -284,3 +284,4 @@
     </script>
 </body>
 </html>
+
