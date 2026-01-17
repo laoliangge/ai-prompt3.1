@@ -73,8 +73,9 @@
             resize: none; overflow-y: auto;
         }
 
+        /* 👇 修改：增加 flex-shrink 防止按钮被挤压，增加 overflow 处理 */
         .file-box { display: flex; align-items: center; justify-content: space-between; cursor: pointer; color: #888; }
-        .file-btn { background: rgba(184, 150, 72, 0.1); color: var(--ai-accent); padding: 3px 10px; border-radius: 4px; font-size: 11px; border: 1px solid var(--ai-glow); }
+        .file-btn { background: rgba(184, 150, 72, 0.1); color: var(--ai-accent); padding: 3px 10px; border-radius: 4px; font-size: 11px; border: 1px solid var(--ai-glow); white-space: nowrap; margin-left: 10px; }
         
         .btn-ai { 
             width: 90%; margin: 8px auto 0; display: block; padding: 13px 5px; 
@@ -118,10 +119,10 @@
                 
                 <input type="file" id="fileIn" hidden accept="image/*">
                 <div class="file-box" id="dropZone" onclick="document.getElementById('fileIn').click()">
-                    <span id="fileName">或点击上传本地图片...</span>
+                    <span id="fileName" style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">或点击上传本地图片...</span>
                     <span class="file-btn">BROWSE</span>
                 </div>
-                <div id="sizeInfo" style="font-size:10px; color:#666; margin-top:4px; text-align:right; display:none;"></div>
+                <div id="sizeInfo" style="font-size:10px; color:#666; margin-top:4px; text-align:center; display:none;"></div>
             </div>
 
             <div class="input-group">
@@ -140,19 +141,25 @@
 
         let selectedFile = null;
         
-        // 🔥 替换：智能文件处理逻辑
+        // 🔧 新增：文件名截断助手 (前12 + ... + 后7)
+        function truncateName(name) {
+            if (!name) return "";
+            if (name.length <= 22) return name;
+            return name.substring(0, 12) + "..." + name.substring(name.length - 7);
+        }
+
         document.getElementById('fileIn').onchange = async function(e) {
             if(e.target.files[0]) {
                 const originalFile = e.target.files[0];
                 const fileNameDisplay = document.getElementById('fileName');
                 const infoDiv = document.getElementById('sizeInfo');
 
-                // 1. GIF 保护：动图直接跳过，防止变静止
                 if(originalFile.type === 'image/gif') {
                     selectedFile = originalFile;
-                    fileNameDisplay.innerText = "🎞️ GIF (Skip Compression)";
+                    // 👇 使用截断函数
+                    fileNameDisplay.innerText = "🎞️ " + truncateName(originalFile.name);
                     infoDiv.style.display = 'block';
-                    infoDiv.innerText = "Animation kept original.";
+                    infoDiv.innerText = "GIF Animation (Skipped Compression)";
                     infoDiv.style.color = "#B89648";
                     return;
                 }
@@ -160,16 +167,15 @@
                 fileNameDisplay.innerText = "⚡ Analyzing...";
 
                 try {
-                    // 2. 尝试压缩
                     const compressedFile = await compressImage(originalFile);
 
-                    // 3. 智能对比：如果压完反而变大，就用原图
                     if (compressedFile.size >= originalFile.size) {
                         selectedFile = originalFile;
                         const kSize = (originalFile.size / 1024).toFixed(1);
-                        fileNameDisplay.innerText = originalFile.name;
+                        // 👇 使用截断函数
+                        fileNameDisplay.innerText = truncateName(originalFile.name);
                         infoDiv.style.display = 'block';
-                        infoDiv.innerText = `Used Original (${kSize}KB) - Already optimized`;
+                        infoDiv.innerText = `Original Used (${kSize}KB) - Already Optimized`;
                         infoDiv.style.color = "#B89648";
                     } else {
                         selectedFile = compressedFile;
@@ -177,21 +183,21 @@
                         const origK = (originalFile.size / 1024).toFixed(1);
                         const saved = (100 - selectedFile.size/originalFile.size*100).toFixed(0);
                         
-                        fileNameDisplay.innerText = selectedFile.name;
+                        // 👇 使用截断函数
+                        fileNameDisplay.innerText = truncateName(selectedFile.name);
                         infoDiv.style.display = 'block';
-                        infoDiv.innerText = `WebP Optimized: ${origK}KB -> ${kSize}KB (Saved ${saved}%)`;
+                        infoDiv.innerText = `WebP Optimized: ${origK}KB → ${kSize}KB (Saved ${saved}%)`;
                         infoDiv.style.color = "#4ade80";
                     }
                 } catch (err) {
-                    // 出错保底：用原图
                     selectedFile = originalFile;
-                    fileNameDisplay.innerText = originalFile.name;
+                    // 👇 使用截断函数
+                    fileNameDisplay.innerText = truncateName(originalFile.name);
                     console.error(err);
                 }
             }
         };
 
-        // 🔥 新增：压缩核心函数 (Max 2500px, Quality 0.75)
         function compressImage(file) {
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
@@ -213,8 +219,11 @@
                         canvas.height = height;
                         
                         const ctx = canvas.getContext('2d');
+                        ctx.imageSmoothingEnabled = true;
+                        ctx.imageSmoothingQuality = 'high';
                         ctx.drawImage(img, 0, 0, width, height);
                         
+                        // 🎨 画质锁定 0.82
                         canvas.toBlob((blob) => {
                             if (!blob) return reject(new Error('Canvas empty'));
                             const newName = file.name.replace(/\.[^/.]+$/, "") + ".webp";
@@ -250,7 +259,6 @@
                 let finalUrl = manualUrl;
 
                 if(!finalUrl && selectedFile) {
-                    // 这里的 selectedFile 可能是原名(PNG)也可能是新名(WebP)，自动适配
                     const safeName = `${Date.now()}_${selectedFile.name.replace(/\s/g, '')}`;
                     const { error: imgErr } = await supabase.storage.from('images').upload(safeName, selectedFile);
                     if(imgErr) throw imgErr;
