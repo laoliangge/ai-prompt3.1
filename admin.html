@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AI 发布终端 - 修复版</title>
+    <title>AI 发布终端 - 鉴伪版</title>
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -57,34 +57,33 @@
         }
         label::before { content: ""; width: 4px; height: 4px; background: var(--ai-accent); border-radius: 50%; }
 
-        /* 基础输入框样式 (Identifier, Category, ManualUrl) */
+        /* 输入框样式 */
         input { 
             width: 100%; background: rgba(0, 0, 0, 0.7) !important; 
             border: 1px solid rgba(255, 255, 255, 0.12); 
-            color: #fff !important; /* 强制纯白，和上面一致 */
+            color: #fff !important; 
             padding: 11px 14px; border-radius: 6px; font-size: 13px;
             box-sizing: border-box;
         }
 
-        /* 统一 Prompt 框样式 */
+        /* Prompt框样式 */
         textarea { 
             width: 100%; background: rgba(0, 0, 0, 0.7) !important;
-            border: 1px solid rgba(255, 255, 255, 0.12); /* 基础灰框 */
+            border: 1px solid rgba(255, 255, 255, 0.12);
             height: 100px; font-family: 'Fira Code', monospace !important; 
-            color: #fff !important; /* 🌟 修正：输入文字为纯白 */
+            color: #fff !important;
             line-height: 1.4; 
-            border-left: 2px solid var(--ai-accent) !important; /* 🌟 修正：强制显示金色左边线 */
+            border-left: 2px solid var(--ai-accent) !important;
             resize: none; overflow-y: auto; padding: 11px 14px; border-radius: 6px; font-size: 13px;
             box-sizing: border-box;
         }
 
-        /* 统一 Placeholder (提示语) 颜色为深灰 */
         input::placeholder { color: #555; font-size: 13px; }
         textarea::placeholder { color: #555; font-size: 13px; }
 
         input:focus, textarea:focus { outline: none; border-color: var(--ai-accent) !important; }
 
-        /* 文件上传框样式 */
+        /* 文件上传框 */
         .file-box { 
             width: 100%; background: rgba(0, 0, 0, 0.7) !important; 
             border: 1px solid rgba(255, 255, 255, 0.12);
@@ -92,7 +91,7 @@
             box-sizing: border-box;
             display: flex; align-items: center; justify-content: space-between; 
             cursor: pointer; 
-            color: #555; /* 🌟 默认是深灰 (提示语颜色) */
+            color: #555; 
         }
         
         .file-btn { background: rgba(184, 150, 72, 0.1); color: var(--ai-accent); padding: 3px 10px; border-radius: 4px; font-size: 11px; border: 1px solid var(--ai-glow); white-space: nowrap; margin-left: 10px; }
@@ -105,7 +104,7 @@
         }
         .btn-ai:active { background: var(--ai-accent); color: #000; transform: scale(0.96); }
 
-        #statusMsg { text-align: center; font-size: 11px; margin-top: 10px; font-family: 'Fira Code', monospace; min-height: 16px; }
+        #statusMsg { text-align: center; font-size: 11px; margin-top: 10px; font-family: 'Fira Code', monospace; min-height: 16px; transition: opacity 0.3s; }
 
         /* SVG 图标背景样式 */
         #manualUrl {
@@ -142,7 +141,6 @@
             
             <div class="input-group">
                 <label>VISUAL ASSET / 图片资源</label>
-                
                 <input type="text" id="manualUrl" placeholder="粘贴专线外链 (若填此项则不用本地上传)..." style="margin-bottom:5px; border-color:var(--ai-accent);">
                 
                 <input type="file" id="fileIn" hidden accept="image/*">
@@ -174,13 +172,35 @@
             return name.substring(0, 15) + "..." + name.substring(name.length - 7);
         }
 
+        // 🔧 辅助函数：显示自动消失的错误提示
+        function showTempError(text) {
+            const msg = document.getElementById('statusMsg');
+            msg.innerText = text;
+            msg.style.color = "#ff4444";
+            msg.style.opacity = "1";
+            
+            // 2秒后清除
+            setTimeout(() => {
+                msg.style.opacity = "0"; 
+                setTimeout(() => { msg.innerText = ""; msg.style.opacity = "1"; }, 300); 
+            }, 2000);
+        }
+
+        // 🔎 核心新增：真实加载测试
+        function validateImageUrl(url) {
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.onload = () => resolve(true); // 加载成功：是好图
+                img.onerror = () => resolve(false); // 加载失败：是垃圾
+                img.src = url;
+            });
+        }
+
         document.getElementById('fileIn').onchange = async function(e) {
             if(e.target.files[0]) {
                 const originalFile = e.target.files[0];
                 const fileNameDisplay = document.getElementById('fileName');
                 const dropZone = document.getElementById('dropZone');
-
-                // 🌟 修正：一旦选中文件，将文字颜色改为纯白 (#fff)
                 dropZone.style.color = '#fff';
 
                 if(originalFile.type === 'image/gif') {
@@ -202,7 +222,6 @@
                 } catch (err) {
                     selectedFile = originalFile;
                     fileNameDisplay.innerText = truncateName(originalFile.name);
-                    console.error(err);
                 }
             }
         };
@@ -250,9 +269,27 @@
             const manualUrl = document.getElementById('manualUrl').value.trim();
 
             if(!title || !category || (!selectedFile && !manualUrl) || !prompt) {
-                msg.innerText = "❌ ERROR: 内容不完整！";
-                msg.style.color = "#ff4444";
+                showTempError("❌ ERROR: 内容不完整！");
                 return;
+            }
+
+            // 🛡️ 智能鉴伪逻辑
+            if(manualUrl) {
+                // 1. 初筛：不是 http 开头，直接滚粗
+                if (!manualUrl.startsWith('http')) {
+                    showTempError("❌ ERROR: 必须以 http/https 开头！");
+                    return;
+                }
+                
+                // 2. 验货：尝试加载图片
+                msg.innerText = "🔍 Verifying Link / 正在验证链接...";
+                msg.style.color = "#B89648";
+                
+                const isValid = await validateImageUrl(manualUrl);
+                if (!isValid) {
+                    showTempError("❌ ERROR: 无效的图片链接或无法访问！");
+                    return;
+                }
             }
 
             msg.innerText = "⚡ PROCESSING / 正在发布...";
@@ -281,8 +318,7 @@
                 setTimeout(() => location.reload(), 2000);
 
             } catch (err) {
-                msg.innerText = "❌ FAILURE: " + err.message;
-                msg.style.color = "#ff4444";
+                showTempError("❌ FAILURE: " + err.message);
                 btn.disabled = false;
             }
         }
