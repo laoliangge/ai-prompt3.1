@@ -73,7 +73,6 @@
             resize: none; overflow-y: auto;
         }
 
-        /* 👇 修改：增加 flex-shrink 防止按钮被挤压，增加 overflow 处理 */
         .file-box { display: flex; align-items: center; justify-content: space-between; cursor: pointer; color: #888; }
         .file-btn { background: rgba(184, 150, 72, 0.1); color: var(--ai-accent); padding: 3px 10px; border-radius: 4px; font-size: 11px; border: 1px solid var(--ai-glow); white-space: nowrap; margin-left: 10px; }
         
@@ -115,14 +114,13 @@
             <div class="input-group">
                 <label>VISUAL ASSET / 图片资源</label>
                 
-                <input type="text" id="manualUrl" placeholder="🔗 粘贴专线外链 (若填此项则不用本地上传)..." style="margin-bottom:8px; border-color:var(--ai-accent);">
+                <input type="text" id="manualUrl" placeholder="🔗 粘贴专线外链 (若填此项则不上传Supabase)..." style="margin-bottom:8px; border-color:var(--ai-accent);">
                 
                 <input type="file" id="fileIn" hidden accept="image/*">
                 <div class="file-box" id="dropZone" onclick="document.getElementById('fileIn').click()">
                     <span id="fileName" style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">或点击上传本地图片...</span>
                     <span class="file-btn">BROWSE</span>
                 </div>
-                <div id="sizeInfo" style="font-size:10px; color:#666; margin-top:4px; text-align:center; display:none;"></div>
             </div>
 
             <div class="input-group">
@@ -141,63 +139,48 @@
 
         let selectedFile = null;
         
-        // 🔧 新增：文件名截断助手 (前15 + ... + 后7)
+        // 文件名截断助手
         function truncateName(name) {
             if (!name) return "";
-            if (name.length <= 25) return name;
-            return name.substring(0, 15) + "..." + name.substring(name.length - 7);
+            if (name.length <= 22) return name;
+            return name.substring(0, 12) + "..." + name.substring(name.length - 7);
         }
 
         document.getElementById('fileIn').onchange = async function(e) {
             if(e.target.files[0]) {
                 const originalFile = e.target.files[0];
                 const fileNameDisplay = document.getElementById('fileName');
-                const infoDiv = document.getElementById('sizeInfo');
 
+                // 1. GIF 保护
                 if(originalFile.type === 'image/gif') {
                     selectedFile = originalFile;
-                    // 👇 使用截断函数
                     fileNameDisplay.innerText = "🎞️ " + truncateName(originalFile.name);
-                    infoDiv.style.display = 'block';
-                    infoDiv.innerText = "GIF Animation (Skipped Compression)";
-                    infoDiv.style.color = "#B89648";
                     return;
                 }
 
                 fileNameDisplay.innerText = "⚡ Analyzing...";
 
                 try {
+                    // 2. 尝试压缩
                     const compressedFile = await compressImage(originalFile);
 
+                    // 3. 智能对比 (后台默默执行，不再显示绿字)
                     if (compressedFile.size >= originalFile.size) {
                         selectedFile = originalFile;
-                        const kSize = (originalFile.size / 1024).toFixed(1);
-                        // 👇 使用截断函数
                         fileNameDisplay.innerText = truncateName(originalFile.name);
-                        infoDiv.style.display = 'block';
-                        infoDiv.innerText = `Original Used (${kSize}KB) - Already Optimized`;
-                        infoDiv.style.color = "#B89648";
                     } else {
                         selectedFile = compressedFile;
-                        const kSize = (selectedFile.size / 1024).toFixed(1);
-                        const origK = (originalFile.size / 1024).toFixed(1);
-                        const saved = (100 - selectedFile.size/originalFile.size*100).toFixed(0);
-                        
-                        // 👇 使用截断函数
                         fileNameDisplay.innerText = truncateName(selectedFile.name);
-                        infoDiv.style.display = 'block';
-                        infoDiv.innerText = `WebP Optimized: ${origK}KB → ${kSize}KB (Saved ${saved}%)`;
-                        infoDiv.style.color = "#4ade80";
                     }
                 } catch (err) {
                     selectedFile = originalFile;
-                    // 👇 使用截断函数
                     fileNameDisplay.innerText = truncateName(originalFile.name);
                     console.error(err);
                 }
             }
         };
 
+        // 压缩核心函数 (0.82 High Quality)
         function compressImage(file) {
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
@@ -223,7 +206,6 @@
                         ctx.imageSmoothingQuality = 'high';
                         ctx.drawImage(img, 0, 0, width, height);
                         
-                        // 🎨 画质锁定 0.82
                         canvas.toBlob((blob) => {
                             if (!blob) return reject(new Error('Canvas empty'));
                             const newName = file.name.replace(/\.[^/.]+$/, "") + ".webp";
@@ -284,5 +266,3 @@
     </script>
 </body>
 </html>
-
-
