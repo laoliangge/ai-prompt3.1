@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AI 发布终端 - 专业版</title>
+    <title>AI 发布终端 - 修复版</title>
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -57,27 +57,44 @@
         }
         label::before { content: ""; width: 4px; height: 4px; background: var(--ai-accent); border-radius: 50%; }
 
-        input, textarea, .file-box { 
+        /* 基础输入框样式 (Identifier, Category, ManualUrl) */
+        input { 
             width: 100%; background: rgba(0, 0, 0, 0.7) !important; 
-            border: 1px solid rgba(255, 255, 255, 0.12); color: #fff; 
+            border: 1px solid rgba(255, 255, 255, 0.12); 
+            color: #fff !important; /* 强制纯白，和上面一致 */
             padding: 11px 14px; border-radius: 6px; font-size: 13px;
             box-sizing: border-box;
         }
-        
-        /* 👇 修改1：统一 Prompt 框的提示语颜色 */
-        input::placeholder, textarea::placeholder { font-size: 13px; color: #555; }
 
-        input:focus, textarea:focus { outline: none; border-color: var(--ai-accent) !important; }
-        
+        /* 统一 Prompt 框样式 */
         textarea { 
+            width: 100%; background: rgba(0, 0, 0, 0.7) !important;
+            border: 1px solid rgba(255, 255, 255, 0.12); /* 基础灰框 */
             height: 100px; font-family: 'Fira Code', monospace !important; 
-            color: var(--ai-accent); line-height: 1.4; border-left: 2px solid var(--ai-accent);
-            resize: none; overflow-y: auto;
+            color: #fff !important; /* 🌟 修正：输入文字为纯白 */
+            line-height: 1.4; 
+            border-left: 2px solid var(--ai-accent) !important; /* 🌟 修正：强制显示金色左边线 */
+            resize: none; overflow-y: auto; padding: 11px 14px; border-radius: 6px; font-size: 13px;
+            box-sizing: border-box;
         }
 
-        /* 👇 修改2：统一上传按钮里的文字颜色 (#555) */
-        .file-box { display: flex; align-items: center; justify-content: space-between; cursor: pointer; color: #555; }
+        /* 统一 Placeholder (提示语) 颜色为深灰 */
+        input::placeholder { color: #555; font-size: 13px; }
+        textarea::placeholder { color: #555; font-size: 13px; }
 
+        input:focus, textarea:focus { outline: none; border-color: var(--ai-accent) !important; }
+
+        /* 文件上传框样式 */
+        .file-box { 
+            width: 100%; background: rgba(0, 0, 0, 0.7) !important; 
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            padding: 11px 14px; border-radius: 6px; font-size: 13px;
+            box-sizing: border-box;
+            display: flex; align-items: center; justify-content: space-between; 
+            cursor: pointer; 
+            color: #555; /* 🌟 默认是深灰 (提示语颜色) */
+        }
+        
         .file-btn { background: rgba(184, 150, 72, 0.1); color: var(--ai-accent); padding: 3px 10px; border-radius: 4px; font-size: 11px; border: 1px solid var(--ai-glow); white-space: nowrap; margin-left: 10px; }
         
         .btn-ai { 
@@ -126,7 +143,7 @@
             <div class="input-group">
                 <label>VISUAL ASSET / 图片资源</label>
                 
-                <input type="text" id="manualUrl" placeholder="粘贴专线外链 (若填此项则不用本地上传)...">
+                <input type="text" id="manualUrl" placeholder="粘贴专线外链 (若填此项则不用本地上传)..." style="margin-bottom:5px; border-color:var(--ai-accent);">
                 
                 <input type="file" id="fileIn" hidden accept="image/*">
                 <div class="file-box" id="dropZone" onclick="document.getElementById('fileIn').click()">
@@ -151,7 +168,6 @@
 
         let selectedFile = null;
         
-        // 文件名截断助手
         function truncateName(name) {
             if (!name) return "";
             if (name.length <= 25) return name;
@@ -162,6 +178,10 @@
             if(e.target.files[0]) {
                 const originalFile = e.target.files[0];
                 const fileNameDisplay = document.getElementById('fileName');
+                const dropZone = document.getElementById('dropZone');
+
+                // 🌟 修正：一旦选中文件，将文字颜色改为纯白 (#fff)
+                dropZone.style.color = '#fff';
 
                 if(originalFile.type === 'image/gif') {
                     selectedFile = originalFile;
