@@ -114,7 +114,8 @@
             <div class="input-group">
                 <label>VISUAL ASSET / 图片资源</label>
                 
-                <input type="text" id="manualUrl" placeholder="🔗 粘贴专线外链 (若填此项则不上传Supabase)..." style="margin-bottom:8px; border-color:var(--ai-accent);">
+                <input type="text" id="manualUrl" placeholder="粘贴专线外链 (若填此项则不用本地上传)..." style="margin-bottom:8px; border-color:var(--ai-accent); padding-left: 34px; background-image: url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23B89648' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71'/%3E%3Cpath d='M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71'/%3E%3C/svg%3E&quot;) !important; background-repeat: no-repeat !important; background-position: 10px center !important;">
+
                 
                 <input type="file" id="fileIn" hidden accept="image/*">
                 <div class="file-box" id="dropZone" onclick="document.getElementById('fileIn').click()">
@@ -142,8 +143,8 @@
         // 文件名截断助手
         function truncateName(name) {
             if (!name) return "";
-            if (name.length <= 22) return name;
-            return name.substring(0, 12) + "..." + name.substring(name.length - 7);
+            if (name.length <= 25) return name;
+            return name.substring(0, 15) + "..." + name.substring(name.length - 7);
         }
 
         document.getElementById('fileIn').onchange = async function(e) {
@@ -266,3 +267,4 @@
     </script>
 </body>
 </html>
+
