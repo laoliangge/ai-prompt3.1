@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -122,6 +121,7 @@
                     <span id="fileName">或点击上传本地图片...</span>
                     <span class="file-btn">BROWSE</span>
                 </div>
+                <div id="sizeInfo" style="font-size:10px; color:#666; margin-top:4px; text-align:right; display:none;"></div>
             </div>
 
             <div class="input-group">
@@ -140,12 +140,92 @@
 
         let selectedFile = null;
         
-        document.getElementById('fileIn').onchange = function(e) {
+        // 🔥 替换：智能文件处理逻辑
+        document.getElementById('fileIn').onchange = async function(e) {
             if(e.target.files[0]) {
-                selectedFile = e.target.files[0];
-                document.getElementById('fileName').innerText = selectedFile.name;
+                const originalFile = e.target.files[0];
+                const fileNameDisplay = document.getElementById('fileName');
+                const infoDiv = document.getElementById('sizeInfo');
+
+                // 1. GIF 保护：动图直接跳过，防止变静止
+                if(originalFile.type === 'image/gif') {
+                    selectedFile = originalFile;
+                    fileNameDisplay.innerText = "🎞️ GIF (Skip Compression)";
+                    infoDiv.style.display = 'block';
+                    infoDiv.innerText = "Animation kept original.";
+                    infoDiv.style.color = "#B89648";
+                    return;
+                }
+
+                fileNameDisplay.innerText = "⚡ Analyzing...";
+
+                try {
+                    // 2. 尝试压缩
+                    const compressedFile = await compressImage(originalFile);
+
+                    // 3. 智能对比：如果压完反而变大，就用原图
+                    if (compressedFile.size >= originalFile.size) {
+                        selectedFile = originalFile;
+                        const kSize = (originalFile.size / 1024).toFixed(1);
+                        fileNameDisplay.innerText = originalFile.name;
+                        infoDiv.style.display = 'block';
+                        infoDiv.innerText = `Used Original (${kSize}KB) - Already optimized`;
+                        infoDiv.style.color = "#B89648";
+                    } else {
+                        selectedFile = compressedFile;
+                        const kSize = (selectedFile.size / 1024).toFixed(1);
+                        const origK = (originalFile.size / 1024).toFixed(1);
+                        const saved = (100 - selectedFile.size/originalFile.size*100).toFixed(0);
+                        
+                        fileNameDisplay.innerText = selectedFile.name;
+                        infoDiv.style.display = 'block';
+                        infoDiv.innerText = `WebP Optimized: ${origK}KB -> ${kSize}KB (Saved ${saved}%)`;
+                        infoDiv.style.color = "#4ade80";
+                    }
+                } catch (err) {
+                    // 出错保底：用原图
+                    selectedFile = originalFile;
+                    fileNameDisplay.innerText = originalFile.name;
+                    console.error(err);
+                }
             }
         };
+
+        // 🔥 新增：压缩核心函数 (Max 2500px, Quality 0.75)
+        function compressImage(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.src = e.target.result;
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        const maxWidth = 2500;
+                        let width = img.width;
+                        let height = img.height;
+                        
+                        if (width > maxWidth) {
+                            height *= maxWidth / width;
+                            width = maxWidth;
+                        }
+                        canvas.width = width;
+                        canvas.height = height;
+                        
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+                        
+                        canvas.toBlob((blob) => {
+                            if (!blob) return reject(new Error('Canvas empty'));
+                            const newName = file.name.replace(/\.[^/.]+$/, "") + ".webp";
+                            resolve(new File([blob], newName, { type: 'image/webp', lastModified: Date.now() }));
+                        }, 'image/webp', 0.82);
+                    };
+                    img.onerror = reject;
+                };
+                reader.onerror = reject;
+            });
+        }
 
         async function gen() {
             const btn = document.getElementById('genBtn');
@@ -153,7 +233,6 @@
             const title = document.getElementById('title').value.trim();
             const category = document.getElementById('category').value.trim();
             const prompt = document.getElementById('prompt').value.trim();
-            // 获取手动链接
             const manualUrl = document.getElementById('manualUrl').value.trim();
 
             if(!title || !category || (!selectedFile && !manualUrl) || !prompt) {
@@ -170,8 +249,8 @@
                 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                 let finalUrl = manualUrl;
 
-                // 只有在没填外链时，才上传文件
                 if(!finalUrl && selectedFile) {
+                    // 这里的 selectedFile 可能是原名(PNG)也可能是新名(WebP)，自动适配
                     const safeName = `${Date.now()}_${selectedFile.name.replace(/\s/g, '')}`;
                     const { error: imgErr } = await supabase.storage.from('images').upload(safeName, selectedFile);
                     if(imgErr) throw imgErr;
@@ -197,6 +276,3 @@
     </script>
 </body>
 </html>
-
-
-
