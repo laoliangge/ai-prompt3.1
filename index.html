@@ -11,6 +11,68 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
     
     <link rel="stylesheet" href="style.css">
+
+    <style>
+        /* 只在 PC 端 (屏幕大于768px) 生效，手机端保持原样 */
+        @media screen and (min-width: 768px) {
+            
+            /* 1. 强制卡片容器使用相对定位 */
+            #columns-container > div {
+                position: relative !important;
+                overflow: hidden !important;
+            }
+
+            /* 2. 隐藏 PC 端不需要的元素：描述(p)、分类标签(span)等 */
+            /* 简单粗暴：除了标题(h2/h3)和图片，其他文字全部隐藏 */
+            #columns-container > div p,
+            #columns-container > div span,
+            #columns-container > div .prompt-text,
+            #columns-container > div .category-pill {
+                display: none !important;
+            }
+
+            /* 3. 强制 标题 (h2/h3) 悬浮在左下角，样式完全同步手机端 */
+            #columns-container > div h2,
+            #columns-container > div h3,
+            #columns-container > div .title {
+                display: block !important;
+                position: absolute !important;
+                bottom: 10px !important;
+                left: 10px !important;
+                
+                /* 字体同步：Inter + Noto Sans SC */
+                font-family: 'Inter', "Noto Sans SC", sans-serif !important;
+                font-size: 15px !important; /* 你定的 15px，精致且清晰 */
+                font-weight: 600 !important;
+                color: #fff !important;
+                
+                text-shadow: 0 2px 4px rgba(0,0,0,0.8) !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                width: calc(100% - 20px) !important;
+                white-space: nowrap !important;
+                overflow: hidden !important;
+                text-overflow: ellipsis !important;
+                z-index: 10 !important;
+                pointer-events: none !important; /* 点击穿透，保证能点开大图 */
+                background: none !important;
+                text-align: left !important;
+            }
+            
+            /* 4. 底部渐变黑条：保护白字清晰度 */
+            #columns-container > div::after {
+                content: "" !important;
+                position: absolute !important;
+                bottom: 0 !important;
+                left: 0 !important;
+                width: 100% !important;
+                height: 80px !important;
+                background: linear-gradient(to top, rgba(0,0,0,0.8), transparent) !important;
+                pointer-events: none !important;
+                z-index: 5 !important;
+            }
+        }
+    </style>
 </head>
 <body>
 
