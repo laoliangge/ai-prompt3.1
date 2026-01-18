@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ROOT_ACCESS v28.2 (SECURE AUTH)</title>
+    <title>ROOT_ACCESS v28.3 (SECURE AUTH)</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         /* 🎨 保持 v17/v28 经典黑金风格 */
@@ -21,7 +21,7 @@
         }
         .title { color: var(--ai-accent); font-weight: 700; font-size: 13px; margin-bottom: 20px; border-bottom: 1px dashed rgba(184,150,72,0.3); padding-bottom: 10px; letter-spacing: 1px; }
         
-        /* 登录框样式更新 */
+        /* 登录框样式 */
         .auth-box { display: flex; flex-direction: column; gap: 10px; }
         .pw-input { width: 100%; padding: 12px; background: #000; border: 1px solid #333; color: #fff; border-radius: 6px; box-sizing: border-box; text-align: center; }
         .pw-input:focus { border-color: var(--ai-accent); outline: none; }
@@ -55,7 +55,7 @@
     <div id="imgOverlay" onclick="closeImg()"><img id="fullImg" decoding="async"></div>
 
     <div class="manage-container">
-        <div class="title">ROOT_ACCESS v28.2 (SECURE AUTH)</div>
+        <div class="title">ROOT_ACCESS v28.3 (SECURE AUTH)</div>
         
         <div id="authBox" class="auth-box">
             <input type="email" id="adminEmail" class="pw-input" placeholder="Admin Email" autocomplete="username">
@@ -76,11 +76,22 @@
     <div class="modal-overlay" id="editModal">
         <div class="modal-box">
             <div style="color:var(--ai-accent); font-weight:700; text-align:center;">EDIT CONTENT</div>
-            <label class="edit-label">Sort Order</label><input type="number" id="editSort" class="edit-input">
-            <label class="edit-label">Title</label><input type="text" id="editTitle" class="edit-input">
-            <label class="edit-label">Category</label><input type="text" id="editCategory" class="edit-input">
-            <label class="edit-label">Image URL</label><input type="text" id="editImgUrl" class="edit-input">
-            <label class="edit-label">Prompt</label><textarea id="editPrompt" class="edit-area"></textarea>
+            
+            <label class="edit-label">Sort Order (Number)</label>
+            <input type="number" id="editSort" class="edit-input" placeholder="0">
+            
+            <label class="edit-label">Title</label>
+            <input type="text" id="editTitle" class="edit-input">
+            
+            <label class="edit-label">Category</label>
+            <input type="text" id="editCategory" class="edit-input">
+            
+            <label class="edit-label">Image URL</label>
+            <input type="text" id="editImgUrl" class="edit-input">
+            
+            <label class="edit-label">Prompt</label>
+            <textarea id="editPrompt" class="edit-area"></textarea>
+            
             <div style="display:flex; gap:10px; margin-top:10px;">
                 <button onclick="closeModal()" style="flex:1; background:#333; color:#fff; padding:10px;">CANCEL</button>
                 <button onclick="saveChanges()" style="flex:2; background:var(--ai-accent); color:#000; padding:10px; font-weight:700;">SAVE</button>
@@ -89,7 +100,6 @@
     </div>
 
     <script>
-        // 你的配置信息
         const SUPABASE_URL = 'https://mcnilpwwzjtacotgzfcz.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_LXmgVKowe5CIOr9v_PtODQ_dtC1fqkS';
         const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -97,27 +107,23 @@
         let allData = [];
         let currentEditId = null;
 
-        // 🛡️ 核心升级：不再是本地比对字符串，而是向服务器申请令牌
         async function verify() {
             const email = document.getElementById('adminEmail').value.trim();
             const password = document.getElementById('adminPass').value.trim();
             const statusDiv = document.getElementById('loginStatus');
 
             statusDiv.innerText = "Verifying...";
-            
-            // 发起真正的登录请求
             const { data, error } = await client.auth.signInWithPassword({ email, password });
 
             if (error) {
                 statusDiv.innerText = "❌ 登录失败: " + error.message;
                 alert("ACCESS DENIED: 账号或密码错误");
             } else {
-                // 登录成功！
                 statusDiv.innerText = "";
                 document.getElementById('authBox').style.display = 'none';
                 document.getElementById('searchContainer').style.display = 'block';
                 document.getElementById('controlPanel').style.display = 'block';
-                loadData(); // 开始拉取数据
+                loadData(); 
             }
         }
 
@@ -156,27 +162,39 @@
         }
         function closeImg() { document.getElementById('imgOverlay').style.display = 'none'; }
 
+        // 🛡️ 修复 1：显示数据时，正确处理 0
         function openEdit(id) {
             currentEditId = id;
             const item = allData.find(i => i.id === id);
-            ['Sort','Title','Category','ImgUrl','Prompt'].forEach(k => {
-                let val = item[k.toLowerCase()] || item[k.replace('Img','Image').replace('Sort','sort_order').toLowerCase()] || ""; 
-                // 简单映射处理
-                if(k==='Sort') val = item.sort_order;
-                if(k==='ImgUrl') val = item.imageUrl;
-                document.getElementById('edit'+k).value = val || "";
-            });
+            
+            // 手动单独赋值，防止 0 被吃掉
+            // 如果是 null/undefined 则给 ""，如果是 0 则给 0
+            const sortVal = item.sort_order;
+            document.getElementById('editSort').value = (sortVal === null || sortVal === undefined) ? 0 : sortVal;
+
+            document.getElementById('editTitle').value = item.title || "";
+            document.getElementById('editCategory').value = item.category || "";
+            document.getElementById('editImgUrl').value = item.imageUrl || "";
+            document.getElementById('editPrompt').value = item.prompt || "";
+            
             document.getElementById('editModal').style.display = 'flex';
         }
 
+        // 🛡️ 修复 2：保存数据时，防止空字符串报错
         async function saveChanges() {
+            const sortInput = document.getElementById('editSort').value.trim();
+            
+            // 如果输入框是空的，自动设为 0；否则转为整数
+            const sortOrderValue = sortInput === "" ? 0 : parseInt(sortInput);
+
             const updates = {
-                sort_order: document.getElementById('editSort').value,
-                title: document.getElementById('editTitle').value,
-                category: document.getElementById('editCategory').value,
-                imageUrl: document.getElementById('editImgUrl').value,
-                prompt: document.getElementById('editPrompt').value
+                sort_order: sortOrderValue,
+                title: document.getElementById('editTitle').value.trim(),
+                category: document.getElementById('editCategory').value.trim(),
+                imageUrl: document.getElementById('editImgUrl').value.trim(),
+                prompt: document.getElementById('editPrompt').value.trim()
             };
+
             const { error } = await client.from('prompts').update(updates).eq('id', currentEditId);
             if(!error) { closeModal(); loadData(); } else alert("Save Failed: " + error.message);
         }
