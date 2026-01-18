@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -16,87 +17,80 @@
         /* 仅在 PC 端生效 */
         @media screen and (min-width: 768px) {
             
-            /* 1. 强制所有卡片容器启用相对定位，防止标题跑偏 */
-            #columns-container div {
+            /* 1. 卡片容器：强制相对定位，作为锚点 */
+            #columns-container > div {
                 position: relative !important;
                 overflow: hidden !important;
                 border-radius: 8px !important;
+                background: #000 !important; /* 防止加载慢时透出底色 */
+                margin-bottom: 16px !important; /* 保持卡片间距 */
             }
 
-            /* 2. 图像强制铺满，消除底部空隙 */
+            /* 2. 图片：铺满，撑开容器 */
             #columns-container img {
                 display: block !important;
                 width: 100% !important;
                 height: auto !important;
-                margin: 0 !important;
+                border-radius: 8px !important;
+                opacity: 1 !important;
             }
 
-            /* 3. 核弹级隐藏：不管藏在第几层，统统隐藏 Prompt(p) 和 分类(span) */
+            /* 3. 核弹级隐藏：隐藏所有非标题、非图片的元素 */
+            /* 包含 p, span, div.desc, div.prompt 等所有可能的文本容器 */
             #columns-container p, 
             #columns-container span, 
-            #columns-container .prompt-text, 
+            #columns-container small,
+            #columns-container .prompt-text,
             #columns-container .description,
             #columns-container .category-pill,
-            #columns-container .tag {
+            #columns-container .tag,
+            #columns-container div[class*="prompt"], 
+            #columns-container div[class*="desc"] {
                 display: none !important;
             }
 
-            /* 4. 标题定位：强制悬浮在左下角，样式完全同步手机端 */
-            /* 包含 h2, h3, h4 和 .title 类，确保万无一失 */
+            /* 4. 标题定位：强制悬浮在左下角 */
+            /* 涵盖 h2, h3, h4, strong 以及可能的 .title 类 */
             #columns-container h2,
             #columns-container h3,
             #columns-container h4,
+            #columns-container strong,
             #columns-container .title {
                 display: block !important;
                 position: absolute !important;
                 bottom: 12px !important;
                 left: 12px !important;
-                z-index: 20 !important;
+                z-index: 100 !important;
                 
-                /* 字体同步 */
+                /* 字体与排版 */
                 font-family: 'Inter', "Noto Sans SC", sans-serif !important;
                 font-size: 15px !important; 
                 font-weight: 600 !important;
                 color: #fff !important;
-                text-shadow: 0 2px 4px rgba(0,0,0,0.9) !important;
+                text-shadow: 0 1px 3px rgba(0,0,0,0.9) !important;
                 
                 margin: 0 !important;
                 padding: 0 !important;
-                background: none !important;
+                background: transparent !important;
                 width: calc(100% - 24px) !important;
                 white-space: nowrap !important;
                 overflow: hidden !important;
                 text-overflow: ellipsis !important;
-                pointer-events: none !important; /* 让点击穿透给图片 */
+                pointer-events: none !important;
             }
             
-            /* 5. 底部渐变黑条：保护白字清晰度 */
-            /* 我们给所有包含图片的 div 加个伪元素蒙层 */
-            #columns-container div:has(img)::after {
+            /* 5. 底部渐变黑条：增加标题可读性 */
+            #columns-container > div::after {
                 content: "" !important;
                 position: absolute !important;
                 bottom: 0 !important;
                 left: 0 !important;
                 width: 100% !important;
                 height: 80px !important;
-                background: linear-gradient(to top, rgba(0,0,0,0.8), transparent) !important;
+                background: linear-gradient(to top, rgba(0,0,0,0.85), transparent) !important;
                 pointer-events: none !important;
-                z-index: 10 !important;
+                z-index: 90 !important;
                 border-radius: 0 0 8px 8px !important;
-            }
-            /* 兼容性备选：如果 :has 不支持，则对所有内部 div 加蒙层（略激进但有效） */
-            @supports not selector(:has(img)) {
-                #columns-container div::after {
-                    content: "" !important;
-                    position: absolute !important;
-                    bottom: 0 !important;
-                    left: 0 !important;
-                    width: 100% !important;
-                    height: 80px !important;
-                    background: linear-gradient(to top, rgba(0,0,0,0.8), transparent) !important;
-                    pointer-events: none !important;
-                    z-index: 10 !important;
-                }
             }
         }
     </style>
