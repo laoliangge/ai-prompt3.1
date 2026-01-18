@@ -17,27 +17,25 @@
         @media screen and (min-width: 768px) {
             
             /* 1. 卡片容器：强制相对定位，作为锚点 */
-            /* 使用空格选择器，匹配 #columns-container 下的所有 div */
-            #columns-container div {
+            #columns-container > div {
                 position: relative !important;
                 overflow: hidden !important;
                 border-radius: 8px !important;
-                /* 确保容器本身没有背景色干扰 */
-                background-color: transparent !important; 
-                border: none !important;
+                background: #000 !important; /* 防止加载慢时透出底色 */
+                margin-bottom: 16px !important; /* 保持卡片间距 */
             }
 
-            /* 2. 图片：强制铺满，撑开容器 */
+            /* 2. 图片：铺满，撑开容器 */
             #columns-container img {
                 display: block !important;
                 width: 100% !important;
                 height: auto !important;
                 border-radius: 8px !important;
-                margin: 0 !important;
+                opacity: 1 !important;
             }
 
             /* 3. 核弹级隐藏：隐藏所有非标题、非图片的元素 */
-            /* 不管藏得多深，只要是这些标签统统干掉 */
+            /* 包含 p, span, div.desc, div.prompt 等所有可能的文本容器 */
             #columns-container p, 
             #columns-container span, 
             #columns-container small,
@@ -45,8 +43,8 @@
             #columns-container .description,
             #columns-container .category-pill,
             #columns-container .tag,
-            #columns-container .btn-copy,
-            #columns-container button {
+            #columns-container div[class*="prompt"], 
+            #columns-container div[class*="desc"] {
                 display: none !important;
             }
 
@@ -63,12 +61,12 @@
                 left: 12px !important;
                 z-index: 100 !important;
                 
-                /* 字体同步：Inter + Noto Sans SC */
+                /* 字体与排版 */
                 font-family: 'Inter', "Noto Sans SC", sans-serif !important;
                 font-size: 15px !important; 
                 font-weight: 600 !important;
                 color: #fff !important;
-                text-shadow: 0 2px 4px rgba(0,0,0,0.9) !important;
+                text-shadow: 0 1px 3px rgba(0,0,0,0.9) !important;
                 
                 margin: 0 !important;
                 padding: 0 !important;
@@ -77,37 +75,21 @@
                 white-space: nowrap !important;
                 overflow: hidden !important;
                 text-overflow: ellipsis !important;
-                pointer-events: none !important; /* 点击穿透 */
+                pointer-events: none !important;
             }
             
             /* 5. 底部渐变黑条：增加标题可读性 */
-            /* 给包含图片的 div 加个伪元素蒙层 */
-            #columns-container div:has(img)::after {
+            #columns-container > div::after {
                 content: "" !important;
                 position: absolute !important;
                 bottom: 0 !important;
                 left: 0 !important;
                 width: 100% !important;
                 height: 80px !important;
-                background: linear-gradient(to top, rgba(0,0,0,0.8), transparent) !important;
+                background: linear-gradient(to top, rgba(0,0,0,0.85), transparent) !important;
                 pointer-events: none !important;
                 z-index: 90 !important;
                 border-radius: 0 0 8px 8px !important;
-            }
-            
-            /* 备用方案：如果浏览器不支持 :has 语法，则用更激进的通用覆盖 */
-            @supports not selector(:has(img)) {
-                #columns-container div::after {
-                    content: "" !important;
-                    position: absolute !important;
-                    bottom: 0 !important;
-                    left: 0 !important;
-                    width: 100% !important;
-                    height: 80px !important;
-                    background: linear-gradient(to top, rgba(0,0,0,0.8), transparent) !important;
-                    pointer-events: none !important;
-                    z-index: 90 !important;
-                }
             }
         }
     </style>
