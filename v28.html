@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ROOT_ACCESS v28.3 (SECURE AUTH)</title>
+    <title>ROOT_ACCESS v28.4 (DASHBOARD)</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        /* 🎨 保持 v17/v28 经典黑金风格 */
+        /* 🎨 v28 经典黑金风格 */
         :root { --ai-accent: #B89648; --ai-bg-card: rgba(15, 15, 15, 0.98); }
         body { 
             height: 100dvh; width: 100vw; overflow-y: auto; 
@@ -15,13 +15,43 @@
             font-family: 'Inter', sans-serif; margin: 0;
         }
         .manage-container { 
-            width: 95%; max-width: 450px; margin-top: 140px; background: var(--ai-bg-card); 
+            width: 95%; max-width: 450px; margin-top: 100px; background: var(--ai-bg-card); 
             border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 20px; 
             box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+            margin-bottom: 50px;
         }
-        .title { color: var(--ai-accent); font-weight: 700; font-size: 13px; margin-bottom: 20px; border-bottom: 1px dashed rgba(184,150,72,0.3); padding-bottom: 10px; letter-spacing: 1px; }
+        .title { color: var(--ai-accent); font-weight: 700; font-size: 13px; margin-bottom: 20px; border-bottom: 1px dashed rgba(184,150,72,0.3); padding-bottom: 10px; letter-spacing: 1px; text-align:center; }
         
-        /* 登录框样式 */
+        /* 📊 仪表盘区域 */
+        .dashboard-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px;
+        }
+        .stat-card {
+            background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 5px;
+        }
+        .stat-label { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; }
+        .stat-value { font-size: 14px; font-weight: 700; color: #fff; font-family: monospace; }
+        
+        /* 进度条样式 */
+        .progress-track {
+            width: 100%; height: 4px; background: #333; border-radius: 2px; margin-top: 5px; overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%; background: var(--ai-accent); width: 0%; transition: width 1s ease;
+        }
+        
+        /* B2 按钮 */
+        .btn-b2 {
+            background: rgba(184, 150, 72, 0.1); border: 1px solid var(--ai-accent);
+            color: var(--ai-accent); border-radius: 6px; font-size: 11px; font-weight: 600;
+            cursor: pointer; padding: 8px; text-decoration: none; text-align: center;
+            display: flex; align-items: center; justify-content: center; gap: 5px;
+            transition: all 0.2s; height: 100%; box-sizing: border-box;
+        }
+        .btn-b2:hover { background: var(--ai-accent); color: #000; }
+
+        /* 登录与列表样式 */
         .auth-box { display: flex; flex-direction: column; gap: 10px; }
         .pw-input { width: 100%; padding: 12px; background: #000; border: 1px solid #333; color: #fff; border-radius: 6px; box-sizing: border-box; text-align: center; }
         .pw-input:focus { border-color: var(--ai-accent); outline: none; }
@@ -55,13 +85,33 @@
     <div id="imgOverlay" onclick="closeImg()"><img id="fullImg" decoding="async"></div>
 
     <div class="manage-container">
-        <div class="title">ROOT_ACCESS v28.3 (SECURE AUTH)</div>
+        <div class="title">ROOT_ACCESS v28.4 (DASHBOARD)</div>
         
         <div id="authBox" class="auth-box">
             <input type="email" id="adminEmail" class="pw-input" placeholder="Admin Email" autocomplete="username">
             <input type="password" id="adminPass" class="pw-input" placeholder="Password" autocomplete="current-password">
             <button class="btn-verify" onclick="verify()">Login to Database</button>
             <div id="loginStatus" style="color:#ff4444; font-size:12px; text-align:center;"></div>
+        </div>
+
+        <div id="dashboard" class="dashboard-grid" style="display:none;">
+            <div class="stat-card">
+                <div style="display:flex; justify-content:space-between;">
+                    <span class="stat-label">SUPABASE STORAGE</span>
+                    <span id="sbPercent" class="stat-label" style="color:var(--ai-accent);">0%</span>
+                </div>
+                <div id="sbUsage" class="stat-value">Checking...</div>
+                <div class="progress-track">
+                    <div id="sbBar" class="progress-fill"></div>
+                </div>
+            </div>
+            
+            <div class="stat-card" style="justify-content:center; padding:0; background:transparent; border:none;">
+                <a href="https://secure.backblaze.com/user_signin.htm" target="_blank" class="btn-b2">
+                    <span>🔥 Backblaze B2</span>
+                    <span style="font-size:9px; opacity:0.7;">View Usage ↗</span>
+                </a>
+            </div>
         </div>
 
         <div id="searchContainer" class="search-box">
@@ -121,9 +171,36 @@
             } else {
                 statusDiv.innerText = "";
                 document.getElementById('authBox').style.display = 'none';
+                document.getElementById('dashboard').style.display = 'grid'; // 显示仪表盘
                 document.getElementById('searchContainer').style.display = 'block';
                 document.getElementById('controlPanel').style.display = 'block';
                 loadData(); 
+                checkStorageUsage(); // 🔥 触发查账
+            }
+        }
+
+        // 🔥 核心：查 Supabase 用量
+        async function checkStorageUsage() {
+            // 调用刚才创建的 SQL 函数
+            const { data, error } = await client.rpc('get_images_size');
+            
+            if (!error && data !== null) {
+                const totalBytes = data;
+                const limitBytes = 500 * 1024 * 1024; // 500MB
+                
+                // 转成 MB
+                const usedMB = (totalBytes / (1024 * 1024)).toFixed(2);
+                const percent = Math.min((totalBytes / limitBytes) * 100, 100).toFixed(1);
+                
+                // 更新 UI
+                document.getElementById('sbUsage').innerText = `${usedMB} MB / 500 MB`;
+                document.getElementById('sbPercent').innerText = `${percent}%`;
+                document.getElementById('sbBar').style.width = `${percent}%`;
+                
+                // 预警颜色
+                if(percent > 80) document.getElementById('sbBar').style.backgroundColor = '#ff4444';
+            } else {
+                document.getElementById('sbUsage').innerText = "Error";
             }
         }
 
@@ -162,13 +239,10 @@
         }
         function closeImg() { document.getElementById('imgOverlay').style.display = 'none'; }
 
-        // 🛡️ 修复 1：显示数据时，正确处理 0
         function openEdit(id) {
             currentEditId = id;
             const item = allData.find(i => i.id === id);
             
-            // 手动单独赋值，防止 0 被吃掉
-            // 如果是 null/undefined 则给 ""，如果是 0 则给 0
             const sortVal = item.sort_order;
             document.getElementById('editSort').value = (sortVal === null || sortVal === undefined) ? 0 : sortVal;
 
@@ -180,11 +254,8 @@
             document.getElementById('editModal').style.display = 'flex';
         }
 
-        // 🛡️ 修复 2：保存数据时，防止空字符串报错
         async function saveChanges() {
             const sortInput = document.getElementById('editSort').value.trim();
-            
-            // 如果输入框是空的，自动设为 0；否则转为整数
             const sortOrderValue = sortInput === "" ? 0 : parseInt(sortInput);
 
             const updates = {
@@ -204,7 +275,7 @@
         async function doDelete(id) {
             if (!confirm("⚠️ 确定要从数据库中销毁此记录吗？\n(B2文件需单独清理)")) return;
             const { error } = await client.from('prompts').delete().eq('id', id);
-            if(!error) loadData(); else alert("Delete Failed: " + error.message);
+            if(!error) loadData(); checkStorageUsage(); // 删除后刷新用量
         }
 
         function doSearch() {
