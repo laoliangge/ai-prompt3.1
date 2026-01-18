@@ -12,14 +12,19 @@ let allData = [];
 let autoScrollTimer = null;
 let isPaused = false; 
 
-// ⚡ 核心：图片加载观察者
+// ⚡ 核心修改：极速版观察者
+// 不再去数据库查了，直接从标签上拿现成的地址
 const imageObserver = new IntersectionObserver((entries, observer) => {
     entries.forEach(entry => {
         if (entry.isIntersecting) {
             const img = entry.target;
-            const id = img.dataset.id; 
-            if (id) {
-                loadImage(id, img); 
+            const realSrc = img.dataset.src; // 🔥 直接拿地址
+            if (realSrc) {
+                img.src = realSrc; 
+                img.onload = () => { 
+                    img.style.background = 'transparent'; 
+                    img.classList.add('loaded'); // 配合CSS淡入
+                };
                 observer.unobserve(img); 
             }
         }
@@ -31,7 +36,9 @@ const imageObserver = new IntersectionObserver((entries, observer) => {
 // ==========================================
 document.addEventListener('DOMContentLoaded', () => {
     if (sb) {
-        sb.from('prompts').select('id, title, category, prompt, sort_order')
+        // 🔥 核心修改：这里加了 imageUrl
+        // 一次性把地址拿回来，省去后面几百次请求
+        sb.from('prompts').select('id, title, category, prompt, sort_order, imageUrl')
           .order('sort_order', { ascending: false })
           .order('id', { ascending: false })
           .then(({ data, error }) => {
@@ -46,15 +53,12 @@ document.addEventListener('DOMContentLoaded', () => {
               setupInteraction();  
               setupNavbarScroll(); 
 
-              // 🔥 核心修改 1/2：读取记忆并“阅后即焚”
+              // 滚动记忆逻辑 (完全保留)
               const savedPos = sessionStorage.getItem('gallery_scroll_pos');
               const scroller = document.getElementById('gallery-wrapper');
               if (savedPos && scroller) {
-                  // 给一点点时间让图片占位，然后跳过去
                   setTimeout(() => {
                       scroller.scrollTop = parseFloat(savedPos);
-                      // 【关键】跳过去之后立刻删掉记忆！
-                      // 这样下次如果是刷新进来，这里就是空的，自然会回顶部
                       sessionStorage.removeItem('gallery_scroll_pos'); 
                   }, 100);
               }
@@ -63,7 +67,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ==========================================
-// 4. 分类栏逻辑
+// 4. 分类栏逻辑 (完全保留)
 // ==========================================
 function setupCategories() {
     const pills = document.querySelectorAll('.cat-pill');
@@ -77,7 +81,7 @@ function setupCategories() {
 }
 
 // ==========================================
-// 5. 画廊渲染 (通用版)
+// 5. 画廊渲染 (极速版)
 // ==========================================
 function renderGallery(filterType, searchKeyword = null) {
     const container = document.getElementById('columns-container');
@@ -88,16 +92,12 @@ function renderGallery(filterType, searchKeyword = null) {
     
     if (searchKeyword) {
         const keywords = searchKeyword.toLowerCase().split(/\s+/).filter(k => k.length > 0);
-        
         if (keywords.length > 0) {
             filteredData = allData.filter(item => {
                 const fullText = (item.title + item.category + (item.prompt || '')).toLowerCase();
                 return keywords.every(k => fullText.includes(k));
             });
-        } else {
-             filteredData = []; 
-        }
-
+        } else { filteredData = []; }
     } else if (filterType !== '全部') {
         filteredData = allData.filter(item => 
             item.category && item.category.includes(filterType)
@@ -125,15 +125,20 @@ function renderGallery(filterType, searchKeyword = null) {
         card.onclick = () => openModal(item);
         
         const placeholder = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
+        // 建议：给个 min-height 减少跳动，不给也行，遵循原样
         const imgStyle = "width:100%; height:auto; background:#1a1a1a;";
+        
+        // 🔥 核心修改：直接填入 imageUrl，备用
+        const safeUrl = item.imageUrl || placeholder;
 
+        // 这里保留了你原来的 DOM 结构，只改了 img 标签的属性
         if (window.innerWidth <= 768) {
             card.innerHTML = `
-                <img src="${placeholder}" data-id="${item.id}" class="lazy-img" alt="${item.title}" style="${imgStyle}">
+                <img src="${placeholder}" data-src="${safeUrl}" class="lazy-img" alt="${item.title}" style="${imgStyle}">
                 <div class="card-info"><div class="card-title">${item.title}</div></div>`;
         } else {
             card.innerHTML = `
-                <img src="${placeholder}" data-id="${item.id}" class="lazy-img" alt="${item.title}" style="${imgStyle}">
+                <img src="${placeholder}" data-src="${safeUrl}" class="lazy-img" alt="${item.title}" style="${imgStyle}">
                 <div class="card-info">
                     <span class="card-category">${item.category || ''}</span>
                     <div class="card-title">${item.title}</div>
@@ -147,16 +152,10 @@ function renderGallery(filterType, searchKeyword = null) {
     });
 }
 
-async function loadImage(id, imgElement) {
-    const { data, error } = await sb.from('prompts').select('imageUrl').eq('id', id).single();
-    if (!error && data && data.imageUrl) {
-        imgElement.src = data.imageUrl;
-        imgElement.onload = () => { imgElement.style.background = 'transparent'; };
-    }
-}
+// ❌ 删除了 loadImage 函数 (因为不需要了)
 
 // ==========================================
-// 6. 搜索功能
+// 6. 搜索功能 (完全保留)
 // ==========================================
 function setupSearch() {
     const btn = document.getElementById('openSearchBtn');
@@ -169,21 +168,12 @@ function setupSearch() {
     const adjustInput = () => {
         input.style.height = 'auto'; 
         input.style.height = input.scrollHeight + 'px'; 
-        
         const maxHeight = window.innerHeight * 0.4;
-        
-        if (input.scrollHeight > maxHeight) {
-            input.style.overflowY = 'auto';
-        } else {
-            input.style.overflowY = 'hidden';
-        }
-
+        if (input.scrollHeight > maxHeight) { input.style.overflowY = 'auto'; } 
+        else { input.style.overflowY = 'hidden'; }
         const visualLength = input.value.replace(/[^\x00-\xff]/g, "xx").length;
-        if (visualLength > 16) {
-            input.classList.add('long-text');
-        } else {
-            input.classList.remove('long-text');
-        }
+        if (visualLength > 16) { input.classList.add('long-text'); } 
+        else { input.classList.remove('long-text'); }
     };
 
     btn.onclick = () => {
@@ -220,9 +210,7 @@ function setupSearch() {
         }
     };
     
-    if(submitArrow) {
-        submitArrow.onclick = doSearch;
-    }
+    if(submitArrow) submitArrow.onclick = doSearch;
 }
 
 window.closeSearch = function() {
@@ -240,15 +228,13 @@ window.closeSearch = function() {
     }, 500);
 
     isPaused = false; 
-    
-    if(location.hash === '#search') {
-        history.back();
-    }
+    if(location.hash === '#search') history.back();
 };
 
 // ==========================================
-// 7. 弹窗功能 (详情页)
+// 7. 弹窗功能 (极速版)
 // ==========================================
+// 🔥 优化：不用再去数据库查图了，直接显示
 async function openModal(item) {
     const modal = document.getElementById('modal');
     document.getElementById('modalTitle').innerText = item.title;
@@ -266,9 +252,9 @@ async function openModal(item) {
     
     history.pushState({modal: 'detail'}, null, '#detail');
 
-    const { data } = await sb.from('prompts').select('imageUrl').eq('id', item.id).single();
-    if (data && data.imageUrl) {
-        modalImg.src = data.imageUrl;
+    // 🔥 直接用现成的 URL，秒开弹窗
+    if (item.imageUrl) {
+        modalImg.src = item.imageUrl;
         modalImg.onload = () => { modalImg.style.opacity = '1'; };
     }
 }
@@ -284,13 +270,11 @@ window.closeModal = function() {
     }, 300);
     isPaused = false;
 
-    if(location.hash === '#detail') {
-        history.back();
-    }
+    if(location.hash === '#detail') history.back();
 }
 
 // ==========================================
-// 8. 全局监听 (物理返回键)
+// 8. 全局监听 (完全保留)
 // ==========================================
 window.addEventListener('popstate', (e) => {
     const searchModal = document.getElementById('searchModal');
@@ -317,7 +301,7 @@ window.addEventListener('popstate', (e) => {
 });
 
 // ==========================================
-// 9. 自动滚动 & 杂项
+// 9. 自动滚动 & 杂项 (完全保留)
 // ==========================================
 function startAutoScroll() {
     const scroller = document.getElementById('gallery-wrapper'); 
@@ -386,9 +370,8 @@ window.addEventListener('resize', () => {
     }, 300);
 });
 
-
 // ==========================================
-// 10. 音乐逻辑
+// 10. 音乐逻辑 (完全保留)
 // ==========================================
 var bgm = document.getElementById('bgm');
 var musicBtn = document.getElementById('musicBtn');
@@ -457,19 +440,12 @@ window.addEventListener('pageshow', function(e) {
 });
 
 // ==========================================
-// 11. 滚动记忆系统 (修正版)
+// 11. 滚动记忆系统 (完全保留)
 // ==========================================
-// 🔥 核心修改 2/2：逻辑大改
-// 只有当用户点击了“链接”或“按钮”（比如去发布页）时，才保存位置
-// 如果只是普通刷新页面，这个事件不会触发，所以位置不会被保存 -> 刷新后归零
 document.addEventListener('click', (e) => {
-    // 只有点击 a 标签（链接）时才记录
     const link = e.target.closest('a');
-    
-    // 确保不是页内跳转（比如 #search），而是真要去别的页面
     if (link) {
         const scroller = document.getElementById('gallery-wrapper');
-        // 如果能找到滚动容器，就保存它的位置
         if (scroller) {
             sessionStorage.setItem('gallery_scroll_pos', scroller.scrollTop);
         }
